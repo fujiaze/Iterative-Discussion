@@ -1,106 +1,106 @@
-# Iterative Discussion
+# 迭代讨论（Iterative Discussion）
 
-[English](#english) | [中文](README.zh-CN.md)
+[中文](#中文) | [English](README.en.md)
 
-A TRAE skill that enforces an **iterative discussion and confirmation workflow before any task execution**. Generalizes the "ask-before-act" pattern from `brainstorming` to all task types (debug, refactoring, feature implementation, ops, etc.), ensuring alignment with the user before writing any code or modifying any file.
+一个 TRAE 技能，**在任何任务执行前强制走迭代讨论与确认流程**。把 `brainstorming` 的"先问后做"模式泛化到所有任务类型（debug、重构、功能实现、运维等），确保动手前与用户对齐。
 
-> **Read this in: [中文](README.zh-CN.md)**
+> **切换语言：[English](README.en.md)**
 
 ---
 
-<a name="english"></a>
-## What It Does
+<a name="中文"></a>
+## 它做什么
 
-Any task — no matter how small — must go through a 5-stage confirmation flow before implementation begins, and must end with a follow-up question rather than silently terminating the conversation.
+任何任务——无论多小——在动手实施前都必须走完 5 阶段确认流程，且结束后必须追问用户是否还有下一阶段，而不是自行结束对话。
 
-The skill itself is just a prompt (a `SKILL.md` file) plus a `user_rule` that forces TRAE to invoke it on every task. There is no runtime code; the mechanism is:
+技能本身只是一段 prompt（一个 `SKILL.md` 文件）加一条 `user_rule` 强制 TRAE 每个任务都调用它。没有任何运行时代码，机制是：
 
-1. **SKILL.md instruction text** — defines when to ask, what to ask, how to ask
-2. **`AskUserQuestion` tool calls** — renders interactive question cards, returns user choices to the AI
-3. **HARD-GATE** — a hard constraint that forbids any implementation action until the user approves
+1. **SKILL.md 指令文本** —— 规定何时问、问什么、怎么问
+2. **`AskUserQuestion` 工具调用** —— 渲染交互式问题卡片，把用户选择回传给 AI
+3. **HARD-GATE 强制门** —— 硬约束，用户未批准前禁止任何实施动作
 
-## 5-Stage Flow
+## 五阶段流程
 
 ```mermaid
 flowchart LR
-    A[Stage 1<br/>Batch Questions<br/>2-4 questions at once] --> B{Still ambiguous?}
-    B -- yes --> C[Stage 2<br/>Follow-up One-by-One<br/>1 question per call]
-    B -- no --> D[Stage 3<br/>Proposal + Confirm<br/>1-3 options, AI-judged count]
+    A[阶段1<br/>批量提问<br/>一次2-4个问题] --> B{仍有歧义?}
+    B -- 是 --> C[阶段2<br/>单独追问<br/>每次1问]
+    B -- 否 --> D[阶段3<br/>方案+确认<br/>1-3个方案, AI自判数量]
     C --> D
-    D --> E[Stage 4<br/>Spec Doc + Confirm<br/>elastic by task type]
-    E --> F[Stage 5<br/>Execute + Self-check + Report]
-    F --> G{Next stage<br/>needed?}
-    G -- yes --> A
-    G -- "no (user says end)" --> H[End]
+    D --> E[阶段4<br/>spec文档+确认<br/>按任务类型弹性]
+    E --> F[阶段5<br/>执行+自检+报告]
+    F --> G{有下一阶段?}
+    G -- 是 --> A
+    G -- "否（用户说结束）" --> H[结束]
 ```
 
-## Task-Type-Specific Spec Rules
+## 按任务类型的 spec 规范
 
-Spec document detail is elastic based on task type — no one-size-fits-all three-document requirement:
+spec 文档详略按任务类型弹性调整——不搞一刀切的三件套：
 
-| Task Type | Spec Document | Question Focus | Acceptance |
+| 任务类型 | spec 文档 | 提问侧重 | 验证标准 |
 |---|---|---|---|
-| **Debug** | May omit; write `spec.md` (symptom+root cause+fix) if root cause is complex | Repro conditions, blast radius, temp workaround needed? | Symptom gone, no regression |
-| **Refactoring** | `spec.md` + `checklist.md` | Motivation, interface changes, rollback strategy | Behavior unchanged + tests green |
-| **Feature** | Full set: `spec.md` + `checklist.md` + `tasks.md` | Purpose, boundaries, success criteria, ambiguities | Meets spec acceptance items |
-| **Ops** | `spec.md` (a few lines); `checklist.md` for high-risk ops | Blast radius, rollback, time window | Op complete + system healthy |
-| **Other/Unclear** | AI judgment, lean simple | Purpose, constraints | Goal achieved |
+| **debug 任务** | 可省；根因复杂则写 `spec.md`（症状+根因+修复方案） | 复现条件、影响范围、是否需保留临时绕过 | 原症状消失、无回归 |
+| **工程重构** | 必出 `spec.md` + `checklist.md` | 重构动机、对外接口是否变、回滚策略 | 行为不变 + 测试全绿 |
+| **功能实现** | 必出三件套：`spec.md` + `checklist.md` + `tasks.md` | 目的、边界、成功标准、歧义点 | 满足 spec 验收项 |
+| **运维任务** | `spec.md` 几行；高危操作必出 `checklist.md` | 影响范围、回滚、时间窗 | 操作完成 + 系统正常 |
+| **其他/不确定** | AI 判断，倾向从简 | 目的、约束 | 目标达成 |
 
-**Spec may be omitted when**: simple debug root cause, the task itself is "make a skill / read a file / one-line fix", or the user explicitly says "skip spec". Even then, Stage 3 (proposal confirm) and Stage 5 (follow-up question) are never skipped.
+**spec 可省的明确条件**：debug 根因简单、任务本身是"制作技能/读文件/单行修复"等极简任务、或用户明确说"跳过 spec 直接做"。即便省 spec，阶段 3（方案确认）和阶段 5（追问）也不省。
 
-## Relationship with `brainstorming`
+## 与 `brainstorming` 的关系
 
-- Does **not** modify `brainstorming` — it remains the specialized skill for creative/new-feature design
-- `iterative-discussion` is for **general tasks** and does **not** mandate `writing-plans` as terminal state (unlike `brainstorming`)
-- If the task is genuinely "creative / new feature design", the AI may suggest switching to `brainstorming`
+- **不修改** `brainstorming` —— 它仍是创意/新功能设计的专用技能
+- `iterative-discussion` 面向**通用任务**，**不强制**以 `writing-plans` 为终态（与 brainstorming 不同）
+- 若任务确实是"创意/新功能设计"，AI 可建议改用 `brainstorming`
 
-## Pros & Cons
+## 优缺点
 
-**Pros**
-- Eliminates wasted work from unexamined assumptions — even "simple" tasks get a sanity check
-- Batch questioning (Stage 1) is faster than one-at-a-time for gathering key details
-- Elastic spec rules avoid burdening trivial tasks with three-document overhead
-- Mandatory follow-up question prevents the AI from silently ending the conversation
-- Confirmation via `AskUserQuestion` (not `NotifyUser`) avoids dialog interruption
+**优点**
+- 消除未审视假设导致的返工——哪怕"简单"任务也过一道 sanity check
+- 阶段 1 批量提问（一次 2-4 问）比逐个问更快收集关键细节
+- 弹性 spec 规则避免极简任务被三件套文档压垮
+- 阶段 5 强制追问，防止 AI 自行结束对话
+- 确认一律用 `AskUserQuestion`（不用 `NotifyUser`），避免中断对话
 
-**Cons**
-- Every task pays an upfront questioning cost — can feel heavy for truly trivial operations
-- Requires a companion `user_rule` to guarantee triggering; relying on the skill description alone may miss fires
-- The AI must judge task type and spec detail level — quality depends on the model
+**缺点**
+- 每个任务都有前置提问成本——对真正琐碎的操作可能显重
+- 需配套 `user_rule` 才能保证触发；仅靠技能 description 可能漏触发
+- AI 需判断任务类型和 spec 详略——质量依赖模型能力
 
-## Installation
+## 安装
 
-### 1. Copy the skill
+### 1. 复制技能文件
 
-Place `SKILL.md` under your TRAE skills directory:
-
-```
-<trae-config-dir>/skills/iterative-discussion/SKILL.md
-```
-
-On Windows the config dir is typically `C:\Users\<you>\.trae-cn\` (CN build) or `C:\Users\<you>\.trae\` (international).
-
-### 2. Add the user rule
-
-Copy the contents of [`user-rule.md`](user-rule.md) into a new file under:
+把 `SKILL.md` 放到 TRAE 技能目录下：
 
 ```
-<trae-config-dir>/user_rules/rule-<timestamp>.md
+<trae配置目录>/skills/iterative-discussion/SKILL.md
 ```
 
-This forces TRAE to invoke `iterative-discussion` on every task. Without it, the skill relies on the AI's self-judgment and may not fire.
+Windows 上配置目录通常是 `C:\Users\<你>\.trae-cn\`（国内版）或 `C:\Users\<你>\.trae\`（国际版）。
 
-### 3. Verify
+### 2. 添加 user_rule
 
-Start a new TRAE session and give it any task. The AI should immediately call `AskUserQuestion` with 2-4 questions before doing anything else.
+把 [`user-rule.md`](user-rule.md) 的内容复制到：
 
-## Files
+```
+<trae配置目录>/user_rules/rule-<时间戳>.md
+```
 
-- [`SKILL.md`](SKILL.md) — the skill definition (5-stage flow, HARD-GATE, task-type table, AskUserQuestion rules)
-- [`user-rule.md`](user-rule.md) — the mandatory trigger rule
-- [`README.md`](README.md) — this file (English)
-- [`README.zh-CN.md`](README.zh-CN.md) — Chinese version
+这条规则强制 TRAE 每个任务都调用 `iterative-discussion`。没有它，技能只能靠 AI 自主判断触发，可能漏触发。
 
-## License
+### 3. 验证
 
-No license file is included. Default copyright applies to the author. Feel free to copy and adapt for personal use.
+开一个新的 TRAE 会话，给任意任务。AI 应当立即调用 `AskUserQuestion` 提 2-4 个问题，再做其他事。
+
+## 文件
+
+- [`SKILL.md`](SKILL.md) —— 技能定义（5 阶段流程、HARD-GATE、任务类型表、AskUserQuestion 规则）
+- [`user-rule.md`](user-rule.md) —— 强制触发规则
+- [`README.md`](README.md) —— 本文件（中文，GitHub 首页默认显示）
+- [`README.en.md`](README.en.md) —— 英文版
+
+## 许可证
+
+未包含 LICENSE 文件，默认归作者所有。欢迎复制和改编供个人使用。
