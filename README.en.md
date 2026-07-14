@@ -2,7 +2,7 @@
 
 [English](#english) | [中文](README.md)
 
-A TRAE skill that enforces an **iterative discussion and confirmation workflow before any task execution**. Generalizes the "ask-before-act" pattern from `brainstorming` to all task types (debug, refactoring, feature implementation, ops, etc.), ensuring alignment with the user before writing any code or modifying any file.
+A TRAE skill that enforces an **iterative discussion and confirmation workflow before any task execution**. Through five stages — batch questions, follow-up, proposal confirmation, spec confirmation, and post-execution follow-up — it ensures alignment with the user before any implementation, eliminating wasted work from unexamined assumptions.
 
 > **Read this in: [中文](README.md)**
 
@@ -34,6 +34,14 @@ flowchart LR
     G -- "no (user says end)" --> H[End]
 ```
 
+### Stage Details
+
+- **Stage 1 Batch Questions**: Immediately call `AskUserQuestion` once with 2-4 key questions covering purpose, constraints, success criteria, ambiguities. 2-4 options per question, always include "Other".
+- **Stage 2 Follow-up**: Review answers, ask follow-up one at a time (1 question per call) for any remaining ambiguity until clear. May be skipped if Stage 1 answers are sufficient.
+- **Stage 3 Proposal + Confirm**: Give proposals based on complexity — 1 proposal + tradeoffs if only one obvious approach; 2-3 for comparison if multiple paths exist. Use `AskUserQuestion` for user to choose/modify/reject. No action before confirmation.
+- **Stage 4 Spec + Confirm**: Generate spec docs per task-type table below, confirm via `AskUserQuestion`. **Never use `NotifyUser` for confirmation** (it interrupts the dialog).
+- **Stage 5 Execute + Follow-up**: Execute → self-check → report → use `AskUserQuestion` to ask "any next-stage task / supplement / adjustment / redo / end". Only ends when user says "end"; otherwise returns to Stage 1.
+
 ## Task-Type-Specific Spec Rules
 
 Spec document detail is elastic based on task type — no one-size-fits-all three-document requirement:
@@ -47,12 +55,6 @@ Spec document detail is elastic based on task type — no one-size-fits-all thre
 | **Other/Unclear** | AI judgment, lean simple | Purpose, constraints | Goal achieved |
 
 **Spec may be omitted when**: simple debug root cause, the task itself is "make a skill / read a file / one-line fix", or the user explicitly says "skip spec". Even then, Stage 3 (proposal confirm) and Stage 5 (follow-up question) are never skipped.
-
-## Relationship with `brainstorming`
-
-- Does **not** modify `brainstorming` — it remains the specialized skill for creative/new-feature design
-- `iterative-discussion` is for **general tasks** and does **not** mandate `writing-plans` as terminal state (unlike `brainstorming`)
-- If the task is genuinely "creative / new feature design", the AI may suggest switching to `brainstorming`
 
 ## Pros & Cons
 
@@ -100,7 +102,8 @@ Start a new TRAE session and give it any task. The AI should immediately call `A
 - [`user-rule.md`](user-rule.md) — the mandatory trigger rule
 - [`README.md`](README.md) — Chinese version (GitHub homepage default)
 - [`README.en.md`](README.en.md) — this file (English)
+- [`LICENSE`](LICENSE) — MIT License
 
 ## License
 
-No license file is included. Default copyright applies to the author. Feel free to copy and adapt for personal use.
+[MIT License](LICENSE) © 2026 fujiaze
